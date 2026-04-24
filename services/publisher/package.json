@@ -1,0 +1,20 @@
+{
+  "name": "@trakyahaber/publisher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@trakyahaber/config": "workspace:*",
+    "@trakyahaber/database": "workspace:*",
+    "@trakyahaber/logger": "workspace:*",
+    "@trakyahaber/queue": "workspace:*",
+    "@trakyahaber/types": "workspace:*",
+    "axios": "^1.8.2",
+    "bullmq": "^5.34.10"
+  }
+}

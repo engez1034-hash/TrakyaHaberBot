@@ -1,0 +1,20 @@
+{
+  "name": "trakyahaberbot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "db:generate": "pnpm --filter @trakyahaber/database prisma:generate",
+    "db:migrate": "pnpm --filter @trakyahaber/database prisma:migrate",
+    "db:seed": "pnpm --filter @trakyahaber/database seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}

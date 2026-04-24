@@ -1,0 +1,465 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  super_admin
+  admin
+  editor
+  viewer
+}
+
+enum ArticleStatus {
+  fetched
+  classified
+  filtered_out
+  rewritten
+  pending_review
+  approved
+  published
+  unpublished
+  failed
+}
+
+enum PublicationStatus {
+  draft
+  scheduled
+  published
+  archived
+}
+
+enum SocialPlatform {
+  instagram
+  facebook
+  twitter
+  linkedin
+}
+
+enum SocialPostStatus {
+  pending
+  pending_approval
+  approved
+  scheduled
+  publishing
+  published
+  failed
+  cancelled
+}
+
+enum JobStatus {
+  pending
+  running
+  completed
+  failed
+  retrying
+}
+
+enum FailureStage {
+  rss_fetch
+  normalization
+  classification
+  rewrite
+  publish
+  social_publish
+}
+
+enum ContentOriginLanguage {
+  el
+  tr
+  en
+}
+
+enum CategorySeverity {
+  critical
+  high
+  medium
+  low
+}
+
+model User {
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String            @unique @db.VarChar(255)
+  emailVerified    DateTime?
+  name             String?           @db.VarChar(255)
+  passwordHash     String            @db.VarChar(255)
+  role             UserRole          @default(viewer)
+  isActive         Boolean           @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  sessions         Session[]
+  createdArticles  Article[]         @relation("ArticleCreator")
+  approvedArticles Article[]         @relation("ArticleApprover")
+  revisions        ArticleRevision[]
+  settingsUpdates  SystemSetting[]
+
+  @@index([role, isActive])
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionToken String   @unique @db.VarChar(255)
+  userId       String   @db.Uuid
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model RssSource {
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String                @db.VarChar(255)
+  url                  String                @unique @db.Text
+  websiteUrl           String?               @db.Text
+  language             ContentOriginLanguage @default(el)
+  isActive             Boolean               @default(true)
+  fetchIntervalMinutes Int                   @default(10)
+  lastFetchedAt        DateTime?
+  lastFetchStatus      String?               @db.VarChar(50)
+  lastFetchError       String?               @db.Text
+  config               Json?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  rawArticles          RawArticle[]
+  fetchRuns            RssFetchRun[]
+  articles             Article[]
+
+  @@index([isActive, lastFetchedAt])
+  @@map("rss_sources")
+}
+
+model RssFetchRun {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId       String    @db.Uuid
+  status         JobStatus @default(pending)
+  itemsFetched   Int       @default(0)
+  itemsNew       Int       @default(0)
+  itemsDuplicate Int       @default(0)
+  errorMessage   String?   @db.Text
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  durationMs     Int?
+  source         RssSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt(sort: Desc)])
+  @@map("rss_fetch_runs")
+}
+
+model RawArticle {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId      String    @db.Uuid
+  sourceUrl     String    @db.Text
+  sourceUrlHash String    @unique @db.VarChar(64)
+  title         String    @db.Text
+  content       String?   @db.Text
+  description   String?   @db.Text
+  author        String?   @db.VarChar(255)
+  publishedAt   DateTime?
+  imageUrl      String?   @db.Text
+  metadata      Json?
+  fetchedAt     DateTime  @default(now())
+  processed     Boolean   @default(false)
+  processedAt   DateTime?
+  source        RssSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  article       Article?
+
+  @@index([sourceId, fetchedAt(sort: Desc)])
+  @@index([processed])
+  @@map("raw_articles")
+}
+
+model Category {
+  id                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                     String           @db.VarChar(100)
+  slug                     String           @unique @db.VarChar(100)
+  emoji                    String           @db.VarChar(10)
+  severity                 CategorySeverity
+  locationDependent        Boolean          @default(true)
+  description              String?          @db.Text
+  aiClassificationKeywords String[]         @db.Text
+  defaultHashtags          String[]         @default([])
+  isActive                 Boolean          @default(true)
+  displayOrder             Int              @default(0)
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+  articles                 Article[]
+  locationRules            LocationRule[]
+
+  @@index([isActive, displayOrder])
+  @@map("categories")
+}
+
+model Region {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nameTr        String         @db.VarChar(100)
+  nameEl        String         @db.VarChar(100)
+  nameEn        String?        @db.VarChar(100)
+  slug          String         @unique @db.VarChar(100)
+  aliases       String[]       @db.Text
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  locationRules LocationRule[]
+
+  @@index([isActive])
+  @@map("regions")
+}
+
+model LocationRule {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId String   @db.Uuid
+  regionId   String   @db.Uuid
+  isRequired Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  region     Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, regionId])
+  @@index([categoryId])
+  @@index([regionId])
+  @@map("location_rules")
+}
+
+model Article {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  rawArticleId      String?           @db.Uuid
+  sourceId          String            @db.Uuid
+  categoryId        String            @db.Uuid
+  slug              String            @unique @db.VarChar(255)
+  title             String            @db.Text
+  content           String            @db.Text
+  summary           String?           @db.Text
+  originalTitle     String            @db.Text
+  originalContent   String?           @db.Text
+  originalUrl       String            @db.Text
+  imageUrl          String?           @db.Text
+  socialText        String?           @db.Text
+  hashtags          String[]          @db.Text
+  author            String?           @db.VarChar(255)
+  location          String?           @db.VarChar(255)
+  status            ArticleStatus     @default(fetched)
+  publicationStatus PublicationStatus @default(draft)
+  publishedAt       DateTime?
+  viewsCount        Int               @default(0)
+  sharesCount       Int               @default(0)
+  aiClassification  Json?
+  metadata          Json?
+  createdBy         String?           @db.Uuid
+  approvedBy        String?           @db.Uuid
+  approvedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  rawArticle        RawArticle?       @relation(fields: [rawArticleId], references: [id], onDelete: SetNull)
+  source            RssSource         @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  category          Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  creator           User?             @relation("ArticleCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  approver          User?             @relation("ArticleApprover", fields: [approvedBy], references: [id], onDelete: SetNull)
+  revisions         ArticleRevision[]
+  assets            ArticleAsset[]
+  socialPosts       SocialPost[]
+  metrics           ArticleMetric[]
+
+  @@index([rawArticleId])
+  @@index([sourceId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([publicationStatus, publishedAt(sort: Desc)])
+  @@index([categoryId, publishedAt(sort: Desc)])
+  @@map("articles")
+}
+
+model ArticleRevision {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId    String   @db.Uuid
+  title        String   @db.Text
+  content      String   @db.Text
+  changedBy    String?  @db.Uuid
+  changeReason String?  @db.Text
+  createdAt    DateTime @default(now())
+  article      Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [changedBy], references: [id], onDelete: SetNull)
+
+  @@index([articleId, createdAt(sort: Desc)])
+  @@map("article_revisions")
+}
+
+model ArticleAsset {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId String   @db.Uuid
+  type      String   @db.VarChar(50)
+  url       String   @db.Text
+  filename  String   @db.VarChar(255)
+  mimeType  String   @db.VarChar(100)
+  sizeBytes Int
+  altText   String?  @db.Text
+  caption   String?  @db.Text
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId, order])
+  @@map("article_assets")
+}
+
+model SystemSetting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String   @unique @db.VarChar(255)
+  value       Json
+  description String?  @db.Text
+  isPublic    Boolean  @default(false)
+  updatedBy   String?  @db.Uuid
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@index([isPublic])
+  @@map("system_settings")
+}
+
+model PromptTemplate {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(100)
+  type      String   @db.VarChar(50)
+  template  String   @db.Text
+  variables Json?
+  model     String   @db.VarChar(50)
+  isActive  Boolean  @default(false)
+  version   Int      @default(1)
+  createdBy String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  @@index([type, isActive])
+  @@map("prompt_templates")
+}
+
+model ProcessingFailure {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stage        FailureStage
+  entityType   String       @db.VarChar(50)
+  entityId     String       @db.Uuid
+  errorMessage String       @db.Text
+  errorStack   String?      @db.Text
+  retryCount   Int          @default(0)
+  maxRetries   Int          @default(3)
+  nextRetryAt  DateTime?
+  resolved     Boolean      @default(false)
+  resolvedAt   DateTime?
+  resolvedBy   String?      @db.Uuid
+  metadata     Json?
+  createdAt    DateTime     @default(now())
+
+  @@index([stage, resolved, nextRetryAt])
+  @@index([entityType, entityId])
+  @@map("processing_failures")
+}
+
+model WebhookEvent {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform     SocialPlatform
+  eventType    String         @db.VarChar(100)
+  payload      Json
+  signature    String?        @db.Text
+  processed    Boolean        @default(false)
+  processedAt  DateTime?
+  errorMessage String?        @db.Text
+  createdAt    DateTime       @default(now())
+
+  @@index([platform, eventType, processed, createdAt(sort: Desc)])
+  @@map("webhook_events")
+}
+
+model SocialAccount {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform            SocialPlatform
+  platformUserId      String         @db.VarChar(255)
+  platformUsername    String?        @db.VarChar(255)
+  displayName         String?        @db.VarChar(255)
+  accessToken         String         @db.Text
+  refreshToken        String?        @db.Text
+  tokenExpiresAt      DateTime?
+  isActive            Boolean        @default(true)
+  autoPublish         Boolean        @default(true)
+  publishDelayMinutes Int            @default(0)
+  config              Json?
+  lastPublishedAt     DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  posts               SocialPost[]
+
+  @@unique([platform, platformUserId])
+  @@index([isActive, autoPublish])
+  @@map("social_accounts")
+}
+
+model SocialPost {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId      String           @db.Uuid
+  accountId      String           @db.Uuid
+  platform       SocialPlatform
+  status         SocialPostStatus @default(pending)
+  postType       String           @db.VarChar(50)
+  text           String           @db.Text
+  hashtags       String[]         @db.Text
+  mediaUrls      String[]         @db.Text
+  platformPostId String?          @db.VarChar(255)
+  platformUrl    String?          @db.Text
+  scheduledFor   DateTime?
+  publishedAt    DateTime?
+  approvedBy     String?          @db.Uuid
+  approvedAt     DateTime?
+  errorMessage   String?          @db.Text
+  retryCount     Int              @default(0)
+  metadata       Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  article        Article          @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  account        SocialAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  attempts       SocialPostAttempt[]
+
+  @@index([articleId])
+  @@index([accountId])
+  @@index([status, scheduledFor])
+  @@index([platform, platformPostId])
+  @@map("social_posts")
+}
+
+model SocialPostAttempt {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  socialPostId  String     @db.Uuid
+  attemptNumber Int
+  status        String     @db.VarChar(50)
+  responseCode  Int?
+  responseBody  Json?
+  errorMessage  String?    @db.Text
+  durationMs    Int?
+  attemptedAt   DateTime   @default(now())
+  socialPost    SocialPost @relation(fields: [socialPostId], references: [id], onDelete: Cascade)
+
+  @@index([socialPostId, attemptedAt(sort: Desc)])
+  @@map("social_post_attempts")
+}
+
+model ArticleMetric {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId        String   @db.Uuid
+  date             DateTime @db.Date
+  views            Int      @default(0)
+  uniqueViews      Int      @default(0)
+  shares           Int      @default(0)
+  socialEngagement Int      @default(0)
+  avgTimeOnPage    Int      @default(0)
+  bounceRate       Decimal  @default(0.0) @db.Decimal(5, 2)
+  createdAt        DateTime @default(now())
+  article          Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, date])
+  @@index([date(sort: Desc)])
+  @@map("article_metrics")
+}

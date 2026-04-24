@@ -1,0 +1,21 @@
+{
+  "name": "@trakyahaber/ai-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@trakyahaber/ai": "workspace:*",
+    "@trakyahaber/config": "workspace:*",
+    "@trakyahaber/database": "workspace:*",
+    "@trakyahaber/logger": "workspace:*",
+    "@trakyahaber/queue": "workspace:*",
+    "@trakyahaber/types": "workspace:*",
+    "bullmq": "^5.34.10",
+    "openai": "^4.76.3"
+  }
+}
