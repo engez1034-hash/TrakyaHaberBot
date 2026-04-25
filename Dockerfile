@@ -4,7 +4,7 @@ RUN npm install -g turbo
 WORKDIR /app
 COPY . .
 RUN pnpm install --no-frozen-lockfile
-RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
+RUN cd apps/web && rm -rf .next && npx next build --experimental-build-mode compile
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL="postgresql://postgres:YYzvHBOctTMCUfPtntsucYcitLFblzCS@gondola.proxy.rlwy.net:49156/railway"
