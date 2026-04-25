@@ -1,10 +1,10 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 RUN npm install -g turbo
 WORKDIR /app
 COPY . .
 RUN pnpm install --no-frozen-lockfile
-RUN cd apps/web && rm -rf .next && npx next build --experimental-build-mode compile
+RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG DATABASE_URL="postgresql://postgres:YYzvHBOctTMCUfPtntsucYcitLFblzCS@gondola.proxy.rlwy.net:49156/railway"
