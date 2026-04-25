@@ -230,7 +230,7 @@ model LocationRule {
 
 model Article {
   id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  rawArticleId      String?           @db.Uuid
+  rawArticleId      String?           @unique @db.Uuid
   sourceId          String            @db.Uuid
   categoryId        String            @db.Uuid
   slug              String            @unique @db.VarChar(255)
