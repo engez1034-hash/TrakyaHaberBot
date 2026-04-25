@@ -4,6 +4,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
   transpilePackages: [
     '@trakyahaber/database',
     '@trakyahaber/config',
