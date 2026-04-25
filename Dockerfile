@@ -1,8 +1,7 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 WORKDIR /app
 
-# Copy workspace config
 COPY package.json pnpm-workspace.yaml turbo.json ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY packages/database/package.json ./packages/database/package.json
@@ -13,16 +12,12 @@ COPY packages/types/package.json ./packages/types/package.json
 COPY packages/ai/package.json ./packages/ai/package.json
 COPY packages/ui/package.json ./packages/ui/package.json
 
-# Install dependencies
 RUN pnpm install --no-frozen-lockfile
 
-# Copy all source
 COPY . .
 
-# Generate Prisma client
-RUN pnpm --filter @trakyahaber/database prisma:generate
+RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
 
-# Build web app
 RUN pnpm --filter @trakyahaber/web build
 
 WORKDIR /app/apps/web
