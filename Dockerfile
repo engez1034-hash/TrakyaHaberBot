@@ -10,6 +10,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV REDIS_URL="redis://localhost:6379"
 
+RUN turbo build --filter=@trakyahaber/database --filter=@trakyahaber/queue --filter=@trakyahaber/types --filter=@trakyahaber/config --filter=@trakyahaber/logger
 RUN cd apps/web && npx next build --experimental-build-mode compile
 
 WORKDIR /app/apps/web
