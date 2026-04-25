@@ -10,6 +10,8 @@ RUN pnpm install --no-frozen-lockfile
 RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV REDIS_URL="redis://localhost:6379"
 RUN turbo build --filter=@trakyahaber/web || pnpm --filter @trakyahaber/web build
 
 WORKDIR /app/apps/web
