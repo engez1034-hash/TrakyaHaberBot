@@ -20,10 +20,10 @@ RUN pnpm install --no-frozen-lockfile
 COPY . .
 
 # Generate Prisma client
-RUN pnpm --filter @trakyahaber/database prisma:generate || cd packages/database && npx prisma generate
+RUN pnpm --filter @trakyahaber/database prisma:generate
 
 # Build web app
-RUN pnpm --filter @trakyahaber/web build || cd apps/web && npx next build
+RUN pnpm --filter @trakyahaber/web build
 
 WORKDIR /app/apps/web
 EXPOSE 3000
