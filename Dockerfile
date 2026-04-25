@@ -18,7 +18,7 @@ COPY . .
 
 RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
 
-RUN pnpm --filter @trakyahaber/web build
+RUN pnpm --filter @trakyahaber/types build; pnpm --filter @trakyahaber/config build; pnpm --filter @trakyahaber/logger build; pnpm --filter @trakyahaber/database build; pnpm --filter @trakyahaber/queue build; pnpm --filter @trakyahaber/ai build; pnpm --filter @trakyahaber/ui build; pnpm --filter @trakyahaber/web build
 
 WORKDIR /app/apps/web
 EXPOSE 3000
