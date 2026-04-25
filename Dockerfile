@@ -1,24 +1,16 @@
 FROM node:22-alpine
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+RUN npm install -g turbo
 WORKDIR /app
-
-COPY package.json pnpm-workspace.yaml turbo.json ./
-COPY apps/web/package.json ./apps/web/package.json
-COPY packages/database/package.json ./packages/database/package.json
-COPY packages/config/package.json ./packages/config/package.json
-COPY packages/logger/package.json ./packages/logger/package.json
-COPY packages/queue/package.json ./packages/queue/package.json
-COPY packages/types/package.json ./packages/types/package.json
-COPY packages/ai/package.json ./packages/ai/package.json
-COPY packages/ui/package.json ./packages/ui/package.json
-
-RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 
+RUN pnpm install --no-frozen-lockfile
+
 RUN cd packages/database && npx prisma@6.19.3 generate --schema=prisma/schema.prisma
 
-RUN pnpm --filter @trakyahaber/types build; pnpm --filter @trakyahaber/config build; pnpm --filter @trakyahaber/logger build; pnpm --filter @trakyahaber/database build; pnpm --filter @trakyahaber/queue build; pnpm --filter @trakyahaber/ai build; pnpm --filter @trakyahaber/ui build; pnpm --filter @trakyahaber/web build
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN turbo build --filter=@trakyahaber/web || pnpm --filter @trakyahaber/web build
 
 WORKDIR /app/apps/web
 EXPOSE 3000
