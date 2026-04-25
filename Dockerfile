@@ -13,6 +13,7 @@ ENV REDIS_URL="redis://localhost:6379"
 RUN turbo build --filter=@trakyahaber/database --filter=@trakyahaber/queue --filter=@trakyahaber/types --filter=@trakyahaber/config --filter=@trakyahaber/logger
 RUN cd apps/web && npx next build --experimental-build-mode compile
 
-WORKDIR /app/apps/web
+RUN printf '#!/bin/sh\ncd /app/packages/database\nnpx prisma db push --schema=prisma/schema.prisma --skip-generate\nnpx prisma db seed || true\ncd /app/apps/web\nexec node .next/standalone/apps/web/server.js\n' > /app/start.sh && chmod +x /app/start.sh
+
 EXPOSE 3000
-CMD CMD ["sh", "-c", "cd /app/packages/database && npx prisma db push --schema=prisma/schema.prisma && npx prisma db seed && cd /app/apps/web && node .next/standalone/apps/web/server.js"]
+CMD ["/app/start.sh"]
