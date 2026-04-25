@@ -15,4 +15,4 @@ RUN cd apps/web && npx next build --experimental-build-mode compile
 
 WORKDIR /app/apps/web
 EXPOSE 3000
-CMD ["node", ".next/standalone/apps/web/server.js"]
+CMD CMD ["sh", "-c", "cd /app/packages/database && npx prisma db push --schema=prisma/schema.prisma && npx prisma db seed && cd /app/apps/web && node .next/standalone/apps/web/server.js"]
